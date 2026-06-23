@@ -81,11 +81,14 @@ echo "==> [6/7] Updating update.json..."
 aws s3 cp "s3://${S3_BUCKET}/configs/GitHub-Hosts-Module/update.json" update.json --endpoint-url "$S3_ENDPOINT" || echo "{}" > update.json
 
 jq --arg ver "v${TODAY_YYMMDD}" \
-   --argcode code "${NEW_VERSION_CODE}" \
+   --argjson code "${NEW_VERSION_CODE}" \
    --arg url "${BASE_URL}/assets/GitHub-Hosts-Module/${NEW_ZIP}" \
    --arg cl "${BASE_URL}/changelogs/GitHub-Hosts-Module/changelogs_${TODAY_MMDD}.md" \
    '.version = $ver | .versionCode = $code | .zipUrl = $url | .changelog = $cl' \
-   update.json > update.json.tmp && mv update.json.tmp update.json
+   update.json > update.json.tmp
+
+# 只有上面成功了，才进行覆盖
+mv update.json.tmp update.json
 
 aws s3 cp update.json "s3://${S3_BUCKET}/configs/GitHub-Hosts-Module/update.json" --endpoint-url "$S3_ENDPOINT"
 
