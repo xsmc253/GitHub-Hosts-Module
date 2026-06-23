@@ -1,0 +1,54 @@
+name: Auto Update GitHub Hosts Module
+
+on:
+  schedule:
+    - cron: '0 16 * * *'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq zip unzip
+
+      - name: Run Update Script
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1 # 防狗叫
+        run: |
+          chmod +x ./update-hosts.sh
+          ./update-hosts.sh
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export TZ="Asia/Shanghai"
+          TODAY_MMDD=$(date +%m%d)
+          TODAY_YYMMDD=$(date +%y%m%d)
+          
+          ZIP_FILE="githubhost_${TODAY_MMDD}.zip"
+          CHANGELOG_FILE="changelogs_${TODAY_MMDD}.md"
+          
+          if [ -f "$ZIP_FILE" ] && [ -f "$CHANGELOG_FILE" ]; then
+            echo "正在发布 GitHub Release: v${TODAY_YYMMDD}..."
+            
+            gh release delete "v${TODAY_YYMMDD}" --yes --cleanup-tag || true
+            
+            gh release create "v${TODAY_YYMMDD}" "$ZIP_FILE" \
+              --title "Github Hosts 修复模块 v${TODAY_YYMMDD}" \
+              --notes-file "$CHANGELOG_FILE"
+          else
+            echo "错误: 未找到生成的构建产物或 Changelog 文件！"
+            exit 1
+          fi
