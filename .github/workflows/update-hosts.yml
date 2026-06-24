@@ -2,7 +2,7 @@ name: Auto Update GitHub Hosts Module
 
 on:
   schedule:
-    - cron: '0 16 * * *'
+    - cron: '0 3 * * *'
   workflow_dispatch: # 支持手动触发
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1 # 防狗叫
+          AWS_DEFAULT_REGION: us-east-1
         run: |
           chmod +x ./update-hosts.sh
           ./update-hosts.sh
@@ -43,6 +43,7 @@ jobs:
           if [ -f "$ZIP_FILE" ] && [ -f "$CHANGELOG_FILE" ]; then
             echo "正在发布 GitHub Release: v${TODAY_YYMMDD}..."
             
+            # 清理历史同名 Tag 以防覆盖运行失败
             gh release delete "v${TODAY_YYMMDD}" --yes --cleanup-tag || true
             
             gh release create "v${TODAY_YYMMDD}" "$ZIP_FILE" \
