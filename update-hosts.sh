@@ -49,13 +49,13 @@ fi
 echo "==> [3/7] Configuring module..."
 unzip -q githubhost_prev.zip -d module_temp
 
-# 修改 customize.sh 里的版本信息
+# 修改 customize.sh 里的版本信息 (匹配新版英文 Module Version 字段)
 echo "  --> Updating version number in customize.sh..."
-sed -E -i "s/版本：[0-9]+/版本：${TODAY_YYMMDD}/g" module_temp/customize.sh
+sed -E -i "s/Module Version : [0-9]+/Module Version : ${TODAY_YYMMDD}/g" module_temp/customize.sh
 
 # 修改 module.prop 里的版本名和版本号
 echo "  --> Updating module.prop..."
-# 清除可能存在的 Windows CRLF 换行符
+# 清除可能存在的 Windows CRLF 换行符影响
 VERSION_CODE=$(grep -E "^versionCode=" module_temp/module.prop | tr -d '\r' | cut -d'=' -f2)
 NEW_VERSION_CODE=$((VERSION_CODE + 1))
 
@@ -80,15 +80,13 @@ aws s3 cp "${NEW_ZIP}" "s3://${S3_BUCKET}/assets/GitHub-Hosts-Module/${NEW_ZIP}"
 echo "==> [6/7] Updating update.json..."
 aws s3 cp "s3://${S3_BUCKET}/configs/GitHub-Hosts-Module/update.json" update.json --endpoint-url "$S3_ENDPOINT" || echo "{}" > update.json
 
+# 修复 jq 参数，将 --argcode 变更为 --argjson
 jq --arg ver "v${TODAY_YYMMDD}" \
    --argjson code "${NEW_VERSION_CODE}" \
    --arg url "${BASE_URL}/assets/GitHub-Hosts-Module/${NEW_ZIP}" \
    --arg cl "${BASE_URL}/changelogs/GitHub-Hosts-Module/changelogs_${TODAY_MMDD}.md" \
    '.version = $ver | .versionCode = $code | .zipUrl = $url | .changelog = $cl' \
-   update.json > update.json.tmp
-
-# 只有上面成功了，才进行覆盖
-mv update.json.tmp update.json
+   update.json > update.json.tmp && mv update.json.tmp update.json
 
 aws s3 cp update.json "s3://${S3_BUCKET}/configs/GitHub-Hosts-Module/update.json" --endpoint-url "$S3_ENDPOINT"
 
